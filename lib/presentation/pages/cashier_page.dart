@@ -687,9 +687,9 @@ class _CashierPageState extends State<CashierPage> {
 
 // buat UI/UX cashier_page.dart diatas 
 /* seperti ini :
-Device Frame: Simulasi tampilan ponsel (iPhone/Android).
-Modern Dashboard: Desain kartu dengan gradien dan glassmorphism.
-Bottom Navigation: Navigasi antar layar yang mulus.
-Micro-animations: Transisi antar layar menggunakan motion.
+    Device Frame: Simulasi tampilan ponsel (iPhone/Android).
+    Modern Dashboard: Desain kartu dengan gradien dan glassmorphism.
+    Bottom Navigation: Navigasi antar layar yang mulus.
+    Micro-animations: Transisi antar layar menggunakan motion.
 */ 
 // jangan rubah logika dan nama function yang sudah ada berikan saya kode lengkapnya
