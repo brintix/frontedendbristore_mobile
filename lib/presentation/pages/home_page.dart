@@ -28,113 +28,67 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('BRI POST', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: const Color(0xFF00529C),
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            const Text(
+              "BRI POST",
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            Text(
+              userName,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () => _logout(context),
-            tooltip: 'Logout',
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Info User
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    radius: 28,
-                    child: Icon(Icons.person, color: Colors.blueAccent, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  // Flexible agar tidak overflow jika nama panjang
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          userName,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          userRole,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            const Text(
-              'Menu',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            // Menu Grid
+            const SizedBox(height: 20),
             GridView.count(
               shrinkWrap: true,
               crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.2,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
               children: [
-                _buildMenuCard(
+                // Menu Produk
+                _buildSimpleMenu(
                   context,
-                  icon: Icons.inventory_2,
-                  label: 'Produk',
-                  color: Colors.orange,
+                  icon: Icons.inventory_2, // Ikon Produk (Box/Stok)
+                  label: "Produk",
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProductPage(storeId: storeId)),
+                  ),
+                ),
+                // Menu Kasir
+                _buildSimpleMenu(
+                  context,
+                  icon: Icons.point_of_sale, // Ikon Kasir (Mesin Kasir)
+                  label: "Kasir",
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ProductPage(storeId: storeId),
-                    ),
-                  ),
-                ),
-                _buildMenuCard(
-                  context,
-                  icon: Icons.receipt_long,
-                  label: 'Transaksi',
-                  color: Colors.green,
-                  onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CashierPage(
-                          userName: userName, // Kirim userName
-                          userRole: userRole, // Kirim userRole
-                          storeId: storeId,
-                        ),
+                      builder: (context) => CashierPage(
+                        userName: userName,
+                        userRole: userRole,
+                        storeId: storeId,
                       ),
                     ),
+                  ),
                 ),
               ],
             ),
@@ -144,47 +98,24 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuCard(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSimpleMenu(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(15),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              // PERBAIKAN: Menggunakan withValues sebagai pengganti withOpacity
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              // PERBAIKAN: Menggunakan withValues sebagai pengganti withOpacity
-              backgroundColor: color.withValues(alpha: 0.15),
-              radius: 28,
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 12),
+            Icon(icon, size: 40, color: const Color(0xFF00529C)),
+            const SizedBox(height: 10),
             Text(
               label,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
@@ -192,19 +123,3 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
-/*
-di home_page.dart ada error :
-
-The named parameter 'userName' is required, but there's no corresponding argument.
-Try adding the required argument.
-
-The named parameter 'userRole' is required, but there's no corresponding argument.
-Try adding the required argument.
-
-The named parameter 'storeId' isn't defined.
-Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'storeId'.
-
-beritahu saya error apa ini dan beritahu saya ganti di mana agar errornya hilang
-
-*/
