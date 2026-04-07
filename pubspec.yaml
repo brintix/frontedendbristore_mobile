@@ -1,0 +1,36 @@
+name: frontendbristore
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  dio: ^5.9.2
+  shared_preferences: ^2.2.3
+  intl: ^0.20.2
+  image_picker: ^1.2.1
+  mobile_scanner: ^5.2.3
+  pdf: ^3.11.0
+  printing: ^5.13.0
+  font_awesome_flutter: ^11.0.0
+  google_fonts: ^8.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Untuk state management yang kamu pakai
+  flutter_bloc: ^9.0.0 
+  # Untuk memilih foto produk dari galeri/kamera
+  # Untuk memformat input mata uang (Rp) secara otomatis
+  
+
+flutter:
+  uses-material-design: true
