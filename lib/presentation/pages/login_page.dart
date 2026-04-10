@@ -2,6 +2,7 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import '../../data/sources/auth_service.dart';
+import 'store_page.dart';
 import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -12,7 +13,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
@@ -24,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await _authService.login(
-        _emailController.text,
+        _nameController.text,
         _passwordController.text,
       );
       log("DEBUG: Respon diterima: ${response?.statusCode}");
@@ -32,29 +33,53 @@ class _LoginPageState extends State<LoginPage> {
       if (response != null && response.statusCode == 200) {
         final dataMap = response.data['data'];
         final userData = dataMap['user'];
+        final stores = dataMap['stores'] ?? [];
+        // 🔥 Extract data aman
+        final String userName = userData['name']?.toString() ?? '';
+        final String roleName = userData['role_name']?.toString() ?? '';
+        final int roleId = int.tryParse(userData['role_id']?.toString() ?? '0') ?? 0;
+        final int storeId = int.tryParse(userData['store_id']?.toString() ?? '0') ?? 0;
+      log("User: $userName, Role: $roleName (ID: $roleId), Store: $storeId, Stores: ${stores.length}", name: "LOGIN_PAGE");
 
-        if (mounted) {
+      if (mounted) {
+        // 🔥 SPECIAL ROLES → StorePage
+        if (roleName.toUpperCase() == 'OWNERS' || roleName.toUpperCase() == 'SUPER USERS') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StorePage(
+                userName: userName,
+                userRole: roleId.toString(),
+                userRoleName: roleName,
+                availableStores: List<Map<String, dynamic>>.from(stores),
+              ),
+            ),
+          );
+        } else {
+          // 🔥 Role biasa → HomePage langsung
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => HomePage(
-                storeId: userData['store_id'],
-                userRole: userData['role_id'].toString(),
-                userName: userData['name'],
+                storeId: storeId,
+                userRole: roleId.toString(),
+                userRoleName: roleName,
+                userName: userName,
               ),
             ),
           );
         }
-      } else {
-        _showError("Email atau Password salah!");
       }
-    } catch (e) {
-      _showError("Terjadi kesalahan jaringan: $e");
-      log("DEBUG: Error terjadi: $e");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } else {
+      _showError("User name atau Password salah!");
     }
+  } catch (e) {
+    _showError("Terjadi kesalahan jaringan: $e");
+    log("LOGIN ERROR: $e", name: "LOGIN_PAGE");
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -69,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _nameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -130,14 +155,14 @@ class _LoginPageState extends State<LoginPage> {
 
                   // Input Fields
                   TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _nameController,
+                    keyboardType: TextInputType.text,
                     decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'admin@bri.co.id',
+                      labelText: 'Username',
+                      hintText: 'user name',
                       filled: true,
                       fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.mail_outline_rounded),
+                      prefixIcon: const Icon(Icons.badge_outlined),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -233,3 +258,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+// 

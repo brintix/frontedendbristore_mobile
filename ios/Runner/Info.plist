@@ -29,6 +29,10 @@
 	<key>UIApplicationSceneManifest</key>
 	<key>NSCameraUsageDescription</key>
 	<string>Digunakan untuk scan barcode produk</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Aplikasi membutuhkan akses bluetooth untuk mencetak struk.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Aplikasi membutuhkan akses bluetooth untuk mencetak struk.</string>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>

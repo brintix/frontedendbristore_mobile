@@ -2,6 +2,7 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import '../../data/models/cart_model.dart';
 
 class ReceiptData {
@@ -51,19 +52,15 @@ class ReceiptHelper {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            // Header Dinamis
             pw.Center(
               child: pw.Text(
-                data.storeName, // Menggunakan data dari parameter
-                style: pw.TextStyle(
-                  fontSize: 16,
-                  fontWeight: pw.FontWeight.bold,
-                ),
+                data.storeName,
+                style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
               ),
             ),
             pw.Center(
               child: pw.Text(
-                data.storeAddress, // Menggunakan data dari parameter
+                data.storeAddress,
                 textAlign: pw.TextAlign.center,
                 style: const pw.TextStyle(fontSize: 9),
               ),
@@ -71,16 +68,13 @@ class ReceiptHelper {
             pw.SizedBox(height: 8),
             pw.Divider(thickness: 0.5),
 
-            // Info Transaksi
             _pdfRow("Invoice", data.invoiceNumber),
             _pdfRow("Kasir", data.userName),
             _pdfRow("Tanggal", _formatDate(data.transactionTime)),
             _pdfRow("Jam", _formatTime(data.transactionTime)),
             pw.Divider(thickness: 0.5),
 
-            // Item Pembelian
-            pw.Text("ITEM",
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+            pw.Text("ITEM", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
             pw.SizedBox(height: 4),
             ...data.cartItems.values.map((item) => pw.Padding(
                   padding: const pw.EdgeInsets.symmetric(vertical: 2),
@@ -102,29 +96,20 @@ class ReceiptHelper {
                 )),
             pw.Divider(thickness: 0.5),
 
-            // Promosi
             if (data.appliedPromotions.isNotEmpty) ...[
-              pw.Text("Promosi",
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
-              ...data.appliedPromotions.map(
-                (p) => pw.Text("• $p", style: const pw.TextStyle(fontSize: 9)),
-              ),
+              pw.Text("Promosi", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+              ...data.appliedPromotions.map((p) => pw.Text("• $p", style: const pw.TextStyle(fontSize: 9))),
               pw.Divider(thickness: 0.5),
             ],
 
-            // Total
             _pdfRow("Total", "Rp ${data.totalAmount.toStringAsFixed(0)}", bold: true),
             _pdfRow("Metode", data.paymentMethodName),
             _pdfRow("Dibayar", "Rp ${data.cashPaid.toStringAsFixed(0)}"),
             _pdfRow("Kembalian", "Rp ${data.change.toStringAsFixed(0)}", bold: true),
             pw.SizedBox(height: 12),
 
-            // Footer
             pw.Center(
-              child: pw.Text(
-                "Terima kasih telah berbelanja!",
-                style: const pw.TextStyle(fontSize: 9),
-              ),
+              child: pw.Text("Terima kasih telah berbelanja!", style: const pw.TextStyle(fontSize: 9)),
             ),
           ],
         ),
@@ -156,51 +141,60 @@ class ReceiptHelper {
     );
   }
 
-  // ── Generate ESC/POS untuk Thermal Printer ────────────────────────────────
-  static List<Map<String, dynamic>> buildThermalCommands(ReceiptData data) {
-    final List<Map<String, dynamic>> commands = [];
+  // ── Generate ESC/POS (Bytes) untuk Thermal Printer ────────────────────────
+  static Future<List<int>> buildThermalBytes(ReceiptData data) async {
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(PaperSize.mm58, profile);
+    List<int> bytes = [];
 
-    void addText(String text, {bool bold = false, bool center = false}) {
-      commands.add({
-        'type': 'text',
-        'content': text,
-        'bold': bold,
-        'align': center ? 'center' : 'left',
-      });
-    }
+    // Header
+    bytes += generator.text(data.storeName,
+        styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2, width: PosTextSize.size2));
+    bytes += generator.text(data.storeAddress, styles: const PosStyles(align: PosAlign.center));
+    bytes += generator.hr();
 
-    void addLine() => addText('--------------------------------');
+    // Info
+    bytes += generator.text("Invoice : ${data.invoiceNumber}");
+    bytes += generator.text("Kasir   : ${data.userName}");
+    bytes += generator.text("Waktu   : ${_formatDate(data.transactionTime)} ${_formatTime(data.transactionTime)}");
+    bytes += generator.hr();
 
-    // Menggunakan Nama & Alamat Toko dinamis
-    addText(data.storeName, bold: true, center: true);
-    addText(data.storeAddress, center: true);
-    addLine();
-    addText("Invoice : ${data.invoiceNumber}");
-    addText("Kasir   : ${data.userName}");
-    addText("Tanggal : ${_formatDate(data.transactionTime)}");
-    addText("Jam     : ${_formatTime(data.transactionTime)}");
-    addLine();
-
+    // Items
     for (final item in data.cartItems.values) {
-      addText("${item.product.name} x${item.quantity}");
-      addText("  Rp ${item.totalItemPrice.toStringAsFixed(0)}");
+      bytes += generator.text(item.product.name, styles: const PosStyles(bold: true));
+      bytes += generator.row([
+        PosColumn(text: "${item.quantity} x ${item.product.price.toStringAsFixed(0)}", 
+          width: 7),
+        PosColumn(
+            text: "Rp ${item.totalItemPrice.toStringAsFixed(0)}",
+            width: 5,
+            styles: const PosStyles(align: PosAlign.right)),
+      ]);
     }
-    addLine();
+    bytes += generator.hr();
 
-    if (data.appliedPromotions.isNotEmpty) {
-      addText("Promosi:", bold: true);
-      for (final promo in data.appliedPromotions) {
-        addText("- $promo");
-      }
-      addLine();
-    }
-    addText("Total    : Rp ${data.totalAmount.toStringAsFixed(0)}", bold: true);
-    addText("Metode   : ${data.paymentMethodName}");
-    addText("Dibayar  : Rp ${data.cashPaid.toStringAsFixed(0)}");
-    addText("Kembalian: Rp ${data.change.toStringAsFixed(0)}", bold: true);
-    addLine();
-    addText("Terima kasih telah berbelanja!", center: true);
+    // Total & Pembayaran
+    bytes += generator.row([
+      PosColumn(text: "TOTAL", width: 6, styles: const PosStyles(bold: true)),
+      PosColumn(
+          text: "Rp ${data.totalAmount.toStringAsFixed(0)}",
+          width: 6,
+          styles: const PosStyles(align: PosAlign.right, bold: true)),
+    ]);
+    bytes += generator.text("Metode  : ${data.paymentMethodName}");
+    bytes += generator.text("Dibayar : Rp ${data.cashPaid.toStringAsFixed(0)}");
+    bytes += generator.text("Kembali : Rp ${data.change.toStringAsFixed(0)}", styles: const PosStyles(bold: true));
+    
+    bytes += generator.hr();
+    bytes += generator.text("Terima Kasih", styles: const PosStyles(align: PosAlign.center));
+    
+    bytes += generator.feed(3);
+    bytes += generator.cut();
 
-    return commands;
+    return bytes;
   }
 }
+/*
+saya sudah punya recip_helper.dart untuk menangani value yang di cetak
+sesuaikan denagn ini dan buatkan lagi payment_sheet.dart
+*/ 

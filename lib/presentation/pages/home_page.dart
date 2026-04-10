@@ -7,12 +7,14 @@ import 'cashier_page.dart';
 class HomePage extends StatelessWidget {
   final int storeId;
   final String userRole;
+  final String userRoleName;
   final String userName;
 
   const HomePage({
     super.key,
     required this.storeId,
     required this.userRole,
+    required this.userRoleName,
     required this.userName,
   });
 
@@ -85,6 +87,7 @@ class HomePage extends StatelessWidget {
                       builder: (context) => CashierPage(
                         userName: userName,
                         userRole: userRole,
+                        userRoleName: userRoleName,
                         storeId: storeId,
                       ),
                     ),

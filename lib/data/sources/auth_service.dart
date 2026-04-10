@@ -9,9 +9,10 @@ class AuthService {
     // Inisialisasi Dio
     _dio = Dio(
       BaseOptions(
-        // baseUrl: "https://apistoresbristore.vercel.app/api",
-        baseUrl: "http://10.0.2.2:3000/api",
-        // baseUrl: "http://192.168.100.164:2404/api",
+        baseUrl: "https://apistoresbristore.vercel.app/api",
+        // baseUrl: "http://10.0.2.2:3000/api", /*emulator*/
+        // baseUrl: "http://172.15.15.172:3000/api",
+        // baseUrl : "http://localhost:3000/api", /*Port Forwarding Chrome*/
         
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
@@ -66,12 +67,12 @@ class AuthService {
   Dio get dio => _dio;
 
   // Function login
-  Future<Response?> login(String email, String password) async {
+  Future<Response?> login(String name, String password) async {
     try {
       final response = await _dio.post(
         "/auth/login",
         data: {
-          "email": email,
+          "name": name,
           "password": password,
         },options: Options(
           headers: {
@@ -82,21 +83,24 @@ class AuthService {
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
         final userData = response.data['data']['user'];
-
         final token = response.data['data']['token'];
         final String name = userData['name'];
         final int roleId = userData['role_id'];
-        final int storeId = userData['store_id'];
+        final String userRoleName = userData['role_name']?.toString() ?? '';
+        final int storeId = int.tryParse(userData['store_id'].toString()) ?? 0;
+
 
         // Simpan ke local storage
         await prefs.setString('token', token);
         await prefs.setString('name', name);
         await prefs.setInt('role_id', roleId);
+        await prefs.setString('role_name', userRoleName);
         await prefs.setInt('store_id', storeId);
 
-        log("STORE ID DISIMPAN: $storeId", name: "API_LOG");
+        log("LOGIN SUKSES - Name: $name, Role: $userRoleName (ID : $roleId), Store: $storeId", name: "API_LOG");
+        log("DEBUG - rawStoreId type: ${userData['store_id'].runtimeType}, value: ${userData['store_id']}", name: "API_LOG");
+        
       }
-
       return response;
     } on DioException catch (e) {
       return e.response;
@@ -104,6 +108,23 @@ class AuthService {
       log("Error Tak Terduga: $e", name: "API_LOG");
       return null;
     }
+  }
+
+  // 
+  Future<Response> selectStore(int storeId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    return await _dio.post(
+      '/auth/select-store',
+      data: {'store_id': storeId},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      ),
+    );
   }
 
   /// --- FUNGSI BARU UNTUK MENGAMBIL PAYMENT METHOD ---
@@ -139,3 +160,4 @@ class AuthService {
     log('Semua data session dihapus', name: 'AUTH_SERVICE');
   }
 }
+// ini auth_service.dart

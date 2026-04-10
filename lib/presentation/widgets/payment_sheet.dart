@@ -1,4 +1,7 @@
 // payment_sheet.dart
+import 'dart:io'; 
+import 'package:permission_handler/permission_handler.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import '../../data/sources/transaction_service.dart';
@@ -30,10 +33,10 @@ class PaymentSheet extends StatefulWidget {
 class _PaymentSheetState extends State<PaymentSheet> {
   String _storeName = "Memuat..."; 
   String _storeAddress = "Memuat...";
+  BluetoothInfo? _selectedDevice; 
   final TextEditingController _cashController = TextEditingController();
   final TransactionService _transactionService = TransactionService();
   final StoreService _storeService = StoreService();
-
 
   double _change = 0;
   bool _isLoading = false;
@@ -48,40 +51,130 @@ class _PaymentSheetState extends State<PaymentSheet> {
     super.initState();
     _initStoreData();
     _loadPaymentMethods();
+    _initBluetooth();
   }
+
+  Future<void> _checkPermissions() async {
+    if (Platform.isAndroid) {
+      // Meminta izin yang dibutuhkan Android modern untuk Bluetooth
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.bluetoothAdvertise,
+        Permission.location, // Beberapa tipe printer butuh lokasi untuk scanning
+      ].request();
+
+      if (statuses[Permission.bluetoothConnect]!.isDenied) {
+        // Jika user menolak, beri tahu mereka
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Izin Bluetooth diperlukan untuk mencetak struk")),
+          );
+        }
+      }
+    }
+  }
+
+  // --- Logic Bluetooth ---
+  Future<void> _initBluetooth() async {
+    try {
+      final bool isBluetoothEnabled = await PrintBluetoothThermal.bluetoothEnabled;
+      if (isBluetoothEnabled) {
+        final List<BluetoothInfo> devices = await PrintBluetoothThermal.pairedBluetooths;
+        if (devices.isNotEmpty) {
+          setState(() {
+            _selectedDevice = devices.first;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error Bluetooth Init: $e");
+    }
+  }
+
+  Future<void> _printToThermal(ReceiptData data) async {
+    try {
+      // 1. Cek status koneksi Bluetooth
+      bool isConnected = await PrintBluetoothThermal.connectionStatus;
+      await _checkPermissions();
+      // 2. Jika belum terhubung, lakukan koneksi menggunakan Mac Address
+      if (!isConnected) {
+        if (_selectedDevice != null) {
+          bool connectResult = await PrintBluetoothThermal.connect(
+            macPrinterAddress: _selectedDevice!.macAdress,
+          );
+          
+          if (!connectResult) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Gagal menghubungkan ke printer")),
+              );
+            }
+            return;
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Pilih printer terlebih dahulu di pengaturan")),
+            );
+          }
+          return;
+        }
+      }
+
+      // 3. Generate data struk dalam bentuk Bytes (ESC/POS)
+      // Ini menggunakan fungsi buildThermalBytes yang baru kita buat di ReceiptHelper
+      final List<int> bytes = await ReceiptHelper.buildThermalBytes(data);
+      
+      // 4. Kirim Bytes tersebut ke printer
+      // writeBytes adalah cara paling akurat untuk mencetak struk yang rapi
+      final bool result = await PrintBluetoothThermal.writeBytes(bytes);
+
+      if (result) {
+        debugPrint("Cetak struk berhasil.");
+      } else {
+        throw "Gagal mengirim data ke printer";
+      }
+      
+    } catch (e) {
+      debugPrint("Gagal Cetak: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Terjadi kesalahan printer: $e"), 
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+
+  // --- Logic API & Transaction ---
 
   Future<void> _initStoreData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // LANGKAH 1: Coba ambil dari SharedPreferences (Lokal)
     String? localName = prefs.getString('store_name');
     String? localAddress = prefs.getString('store_address');
 
     if (localName != null && localAddress != null) {
-      // Jika ada di lokal, langsung tampilkan agar UI cepat
       setState(() {
         _storeName = localName;
         _storeAddress = localAddress;
       });
     } else {
-      // LANGKAH 2: Jika di lokal kosong (misal baru instal/login), panggil API
-      // widget.storeId harus di-pass dari halaman Cashier ke PaymentSheet
       final storeData = await _storeService.getStoreDetail(widget.storeId);
-
       if (storeData != null) {
         setState(() {
           _storeName = storeData['name'] ?? "BRI POST";
           _storeAddress = storeData['address'] ?? "Alamat tidak tersedia";
         });
-
-        // Simpan hasil API ke lokal untuk penggunaan berikutnya
         await prefs.setString('store_name', _storeName);
         await prefs.setString('store_address', _storeAddress);
       }
     }
   }
 
-  // STAY: Nama function tidak diubah, diperkuat logic parsingnya
   Future<void> _loadPaymentMethods() async {
     if (!mounted) return;
     setState(() {
@@ -91,32 +184,22 @@ class _PaymentSheetState extends State<PaymentSheet> {
 
     try {
       final dynamic responseData = await _transactionService.fetchPaymentMethods();
-
       if (responseData is List) {
         final List<PaymentMethodModel> loadedMethods = [];
-
         for (var item in responseData) {
-          try {
-            // Menggunakan Map.from untuk memastikan tipe data cocok dengan model
-            final Map<String, dynamic> cleanMap = Map<String, dynamic>.from(item);
-            loadedMethods.add(PaymentMethodModel.fromJson(cleanMap));
-          } catch (e) {
-            debugPrint("Gagal parsing item: $item, error: $e");
-          }
+          final Map<String, dynamic> cleanMap = Map<String, dynamic>.from(item);
+          loadedMethods.add(PaymentMethodModel.fromJson(cleanMap));
         }
 
         if (mounted) {
           setState(() {
             _paymentMethods = loadedMethods;
-            // Otomatis pilih metode pertama jika tersedia
             if (_paymentMethods.isNotEmpty) {
               _selectedMethodId = _paymentMethods[0].id;
             }
             _isMethodsLoading = false;
           });
         }
-      } else {
-        throw Exception("Format API salah: Data bukan berupa List");
       }
     } catch (e) {
       if (mounted) {
@@ -125,12 +208,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
           _methodsError = "Gagal memproses data pembayaran: $e";
         });
       }
-      debugPrint("Error Detail Load Methods: $e");
     }
   }
 
   void _calculateChange(String value) {
-    // Menghilangkan karakter non-numeric kecuali titik untuk double parsing
     String cleanValue = value.replaceAll(RegExp(r'[^0-9.]'), '');
     double cashPaid = double.tryParse(cleanValue) ?? 0;
     setState(() {
@@ -138,17 +219,13 @@ class _PaymentSheetState extends State<PaymentSheet> {
     });
   }
 
-  // STAY: Nama function tidak diubah
   Future<void> _processTransaction() async {
     setState(() => _isLoading = true);
-
     try {
       final txResponse = await _transactionService.createTransaction(
         cartItems: widget.cartItems,
         couponCode: null,
       );
-
-      debugPrint("📦 TX Response: $txResponse");
 
       if (txResponse['success'] == true) {
         final txData = txResponse['data'];
@@ -165,13 +242,8 @@ class _PaymentSheetState extends State<PaymentSheet> {
           referenceNumber: invoice,
         );
 
-        debugPrint("💳 Pay Response: $payResponse");
-
         if (payResponse['success'] == true) {
-          debugPrint("✅ Transaksi & Pembayaran Berhasil");
-          if (mounted) {
-            _showSuccessDialog(invoice, promos);
-          }
+          if (mounted) _showSuccessDialog(invoice, promos);
         } else {
           throw Exception(payResponse['message'] ?? "Gagal memproses pembayaran");
         }
@@ -179,15 +251,9 @@ class _PaymentSheetState extends State<PaymentSheet> {
         throw Exception(txResponse['message'] ?? "Gagal membuat data transaksi");
       }
     } catch (e) {
-      debugPrint("🔥 Error Proses Transaksi: $e");
       if (mounted) {
-        final errorMsg = e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Terjadi Kesalahan: $errorMsg"),
-            backgroundColor: Colors.red[700],
-            duration: const Duration(seconds: 5),
-          ),
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red[700]),
         );
       }
     } finally {
@@ -195,7 +261,6 @@ class _PaymentSheetState extends State<PaymentSheet> {
     }
   }
 
-  // STAY: Nama function tidak diubah
   void _showSuccessDialog(String invoice, List<String> promos) {
     final selectedMethod = _paymentMethods.firstWhere(
       (m) => m.id == _selectedMethodId,
@@ -205,7 +270,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
     final receiptData = ReceiptData(
       invoiceNumber: invoice,
       userName: widget.userName,
-      storeName: _storeName,       // Variabel yang kita buat di level State
+      storeName: _storeName,
       storeAddress: _storeAddress,
       cartItems: widget.cartItems,
       totalAmount: widget.totalAmount,
@@ -233,30 +298,29 @@ class _PaymentSheetState extends State<PaymentSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("Invoice : $invoice", style: const TextStyle(fontSize: 13)),
-            Text("Kasir   : ${widget.userName}", style: const TextStyle(fontSize: 13)),
             const Divider(),
-            Text("Total   : Rp ${widget.totalAmount.toStringAsFixed(0)}"),
-            Text("Bayar   : Rp ${(double.tryParse(_cashController.text) ?? widget.totalAmount).toStringAsFixed(0)}"),
-            Text("Kembali : Rp ${_change.toStringAsFixed(0)}", 
+            Text("Total Tagihan: Rp ${widget.totalAmount.toStringAsFixed(0)}"),
+            Text("Kembalian: Rp ${_change.toStringAsFixed(0)}", 
                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-            if (promos.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text("Promosi:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              ...promos.map((p) => Text("• $p", style: const TextStyle(fontSize: 12))),
-            ],
           ],
         ),
         actions: [
+          // CETAK THERMAL
           TextButton.icon(
+            icon: const Icon(Icons.print, color: Colors.blueGrey),
+            label: const Text("Cetak"),
+            onPressed: () => _printToThermal(receiptData),
+          ),
+          // SHARE PDF
+          IconButton(
             icon: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
-            label: const Text("PDF", style: TextStyle(color: Colors.redAccent)),
             onPressed: () => ReceiptHelper.sharePdf(receiptData),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
             onPressed: () {
-              Navigator.pop(context); // Tutup dialog
-              Navigator.pop(context); // Tutup bottom sheet
+              Navigator.pop(context); 
+              Navigator.pop(context); 
               widget.onTransactionSuccess();
             },
             child: const Text("Selesai", style: TextStyle(color: Colors.white)),
@@ -266,109 +330,40 @@ class _PaymentSheetState extends State<PaymentSheet> {
     );
   }
 
-  Widget _buildPaymentMethodSection() {
-    if (_isMethodsLoading) {
-      return const SizedBox(
-        height: 50,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
-
-    if (_methodsError != null || _paymentMethods.isEmpty) {
-      return InkWell(
-        onTap: _loadPaymentMethods,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.red[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red.shade200),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.refresh, color: Colors.red, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _methodsError ?? "Metode tidak ditemukan. Tap untuk muat ulang.",
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade400),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedMethodId,
-          isExpanded: true,
-          items: _paymentMethods.map((method) {
-            return DropdownMenuItem<int>(
-              value: method.id,
-              child: Text(method.name, style: const TextStyle(fontSize: 14)),
-            );
-          }).toList(),
-          onChanged: (val) => setState(() => _selectedMethodId = val),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Sesuai dengan style awal Anda
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 20,
-        right: 20,
-        top: 20,
+        left: 20, right: 20, top: 20,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Center(
-              child: SizedBox(
-                width: 40,
-                child: Divider(thickness: 4),
-              ),
-            ),
+            const Center(child: SizedBox(width: 40, child: Divider(thickness: 4))),
             const SizedBox(height: 10),
-            const Text(
-              "Pembayaran",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text("Pembayaran", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Total Tagihan", style: TextStyle(color: Colors.grey)),
-                Text(
-                  "Rp ${widget.totalAmount.toStringAsFixed(0)}",
+                Text("Rp ${widget.totalAmount.toStringAsFixed(0)}",
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
                 ),
               ],
             ),
             const Divider(height: 30),
-            const Text(
-              "Metode Pembayaran",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
+            const Text("Metode Pembayaran", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 8),
             _buildPaymentMethodSection(),
             const SizedBox(height: 20),
             TextField(
               controller: _cashController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
               autofocus: true,
               decoration: InputDecoration(
                 labelText: "Uang Diterima",
@@ -389,20 +384,11 @@ class _PaymentSheetState extends State<PaymentSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _change >= 0 ? "Kembalian" : "Kurang",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _change >= 0 ? Colors.green : Colors.red,
-                    ),
+                  Text(_change >= 0 ? "Kembalian" : "Kurang",
+                    style: TextStyle(fontWeight: FontWeight.bold, color: _change >= 0 ? Colors.green : Colors.red),
                   ),
-                  Text(
-                    "Rp ${_change.abs().toStringAsFixed(0)}",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: _change >= 0 ? Colors.green : Colors.red,
-                    ),
+                  Text("Rp ${_change.abs().toStringAsFixed(0)}",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _change >= 0 ? Colors.green : Colors.red),
                   ),
                 ],
               ),
@@ -423,23 +409,74 @@ class _PaymentSheetState extends State<PaymentSheet> {
                   backgroundColor: Colors.blueAccent,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text("Selesaikan Transaksi",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Selesaikan Transaksi", style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 30),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodSection() {
+    // Kondisi 1: Sedang memuat data (Loading)
+    if (_isMethodsLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: LinearProgressIndicator(),
+      );
+    }
+
+    // Kondisi 2: Terjadi Error (Menggunakan _methodsError)
+    if (_methodsError != null) {
+      return InkWell(
+        onTap: _loadPaymentMethods, // Memungkinkan user klik untuk mencoba lagi
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.shade200),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.refresh, color: Colors.red, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _methodsError!, // Variabel digunakan di sini
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Kondisi 3: Berhasil memuat data (Default UI)
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade400),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _selectedMethodId,
+          isExpanded: true,
+          items: _paymentMethods
+              .map((m) => DropdownMenuItem(
+                    value: m.id,
+                    child: Text(m.name),
+                  ))
+              .toList(),
+          onChanged: (val) => setState(() => _selectedMethodId = val),
         ),
       ),
     );

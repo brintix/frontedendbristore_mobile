@@ -12,12 +12,14 @@ import '../../data/models/product_extension.dart';
 class CashierPage extends StatefulWidget {
   final String userName;
   final String userRole;
+  final String userRoleName;
   final int storeId;
 
   const CashierPage({
     super.key,
     required this.userName,
     required this.userRole,
+    required this.userRoleName,
     required this.storeId,
   });
 

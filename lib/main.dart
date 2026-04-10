@@ -9,9 +9,10 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
+
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BRI POST',
+      title: 'BRI POS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
@@ -21,4 +22,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-// {"email": "owners1@ge.com", "password": "owners1"}
+// {"name": "mr Bre", "password": "password123"}
