@@ -499,42 +499,57 @@ class _AddProductPageState extends State<AddProductPage> {
                         v == null ? 'Satuan wajib dipilih' : null,
                   ),
 
-                  SizedBox(height: 50.h),
-
-                  // ── Tombol Simpan ─────────────────────────────
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50.h,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveProduct,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r)),
-                      ),
-                      child: _isLoading
-                          ? SizedBox(
-                              width: 24.w,
-                              height: 24.h,
-                              child: const CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 3),
-                            )
-                          : Text(
-                              'SIMPAN',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16.sp),
-                            ),
-                    ),
-                  ),
-
                   SizedBox(height: 24.h),
                 ],
               ),
             ),
+
+        bottomNavigationBar: Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: SizedBox(
+              width: double.infinity,
+              height: 50.h,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveProduct,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: 24.w,
+                        height: 24.h,
+                        child: const CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 3),
+                      )
+                    : Text(
+                        'SIMPAN',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16.sp),
+                      ),
+              ),
+            ),
+          ),
+        ),
     );
   }
+
+
 
   // ← SHIMMER form skeleton
   Widget _buildShimmerForm() {
@@ -607,3 +622,5 @@ class _AddProductPageState extends State<AddProductPage> {
     );
   }
 }
+
+// implementasikan tombol simpan Menggunakan bottomNavigationBar untuk method dang function atau logika yang lain jangan dirubah

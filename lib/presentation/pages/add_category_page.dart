@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/sources/product_service.dart';
 
 class AddCategoryPage extends StatefulWidget {
@@ -13,6 +14,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
   final _nameController = TextEditingController();
   final _productService = ProductService();
   bool _isLoading = false;
+
+  // Warna tema — sesuai halaman lain
+  static const _primary = Color(0xFF00529C);
 
   void _saveCategory() async {
     if (_nameController.text.isEmpty) {
@@ -45,6 +49,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('Tambah Kategori', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blueAccent,
@@ -72,25 +77,58 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
               ),
             ),
             const Spacer(),
-            SizedBox(height: 50), 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveCategory,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00529C),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("SIMPAN KATEGORI", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ),
           ],
         ),
       ),
+
+        // ── Tombol Simpan Statis di Bawah ──
+        bottomNavigationBar: Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: SizedBox(
+              width: double.infinity,
+              height: 50.h,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveCategory,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+                child: _isLoading
+                    ? SizedBox(
+                        width: 24.w,
+                        height: 24.h,
+                        child: const CircularProgressIndicator(
+                          color: Colors.white, 
+                          strokeWidth: 3
+                        ),
+                      )
+                    : Text(
+                        "SIMPAN KATEGORI", 
+                        style: TextStyle(
+                          fontSize: 16.sp, 
+                          fontWeight: FontWeight.bold
+                        )
+                      ),
+              ),
+            ),
+          ),
+        ),
+
     );
   }
 }
+
+// SIMPAN KATEGORI juga saya buat sama 
