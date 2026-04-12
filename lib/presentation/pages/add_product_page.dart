@@ -622,5 +622,3 @@ class _AddProductPageState extends State<AddProductPage> {
     );
   }
 }
-
-// implementasikan tombol simpan Menggunakan bottomNavigationBar untuk method dang function atau logika yang lain jangan dirubah

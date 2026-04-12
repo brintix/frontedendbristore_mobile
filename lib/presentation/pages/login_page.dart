@@ -5,6 +5,7 @@ import 'package:animations/animations.dart';
 import '../../data/sources/auth_service.dart';
 import 'store_page.dart';
 import 'home_page.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -217,7 +218,12 @@ class _LoginPageState extends State<LoginPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+                      );
+                      },
                       child: Text(
                         'Lupa Password?',
                         style: TextStyle(fontSize: 13.sp),

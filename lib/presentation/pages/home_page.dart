@@ -5,6 +5,7 @@ import '../../data/sources/auth_service.dart';
 import 'login_page.dart';
 import 'product_page.dart';
 import 'cashier_page.dart';
+import 'transaction_store_page.dart';
 
 class HomePage extends StatelessWidget {
   final int storeId;
@@ -102,6 +103,13 @@ class HomePage extends StatelessWidget {
                     storeId: storeId,
                   ),
                 ),
+                // ← OpenContainer: animasi expand saat buka CashierPage
+                _buildAnimatedMenu(
+                  context, 
+                  icon: Icons.receipt_long, 
+                  label: "Transaksi Toko", 
+                  page: TransactionStorePage(),
+                  ),
               ],
             ),
           ],

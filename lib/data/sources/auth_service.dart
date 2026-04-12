@@ -159,5 +159,40 @@ class AuthService {
     await prefs.remove('store_id');
     log('Semua data session dihapus', name: 'AUTH_SERVICE');
   }
+
+  // --- FUNGSI FORGOT PASSWORD ---
+  // Tahap 1: Kirim email untuk mendapatkan link/token reset
+  Future<Response?> forgotPassword(String email) async {
+    try {
+      final response = await _dio.post(
+        "/auth/forgot-password",
+        data: {"email": email},
+      );
+      return response;
+    } on DioException catch (e) {
+      log("Error Forgot Password: ${e.message}", name: "API_LOG");
+      return e.response;
+    }
+  }
+
+  // --- FUNGSI RESET PASSWORD ---
+  // Tahap 2: Kirim password baru menggunakan token dari email
+  // URL akhir akan menjadi: baseUrl + /auth/reset-password/TOKEN_DARI_EMAIL
+  Future<Response?> resetPassword(String token, String newPassword) async {
+    try {
+      final response = await _dio.post(
+        "/auth/reset-password/$token",
+        data: {
+          "password": newPassword,
+          "confirmPassword": newPassword, // Sesuaikan jika API butuh field konfirmasi
+        },
+      );
+      return response;
+    } on DioException catch (e) {
+      log("Error Reset Password: ${e.message}", name: "API_LOG");
+      return e.response;
+    }
+  }
+
 }
-// ini auth_service.dart
+// uat logikanya di sini auth_service.dart

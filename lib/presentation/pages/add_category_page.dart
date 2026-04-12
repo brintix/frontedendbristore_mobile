@@ -130,5 +130,3 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
     );
   }
 }
-
-// SIMPAN KATEGORI juga saya buat sama 

@@ -6,6 +6,7 @@ import 'package:animations/animations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/sources/auth_service.dart';
 import 'home_page.dart';
+import 'login_page.dart';
 
 class StorePage extends StatefulWidget {
   final String userName;
@@ -46,8 +47,8 @@ class _StorePageState extends State<StorePage> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, size: 22.sp),
-            onPressed: () => _logout(),
+            icon: Icon(Icons.logout, size: 22.sp, color: Colors.white),
+            onPressed: () => _showLogoutDialog(context), // Panggil dialog dulu
           ),
         ],
       ),
@@ -291,14 +292,36 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Tutup dialog
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Tutup dialog dulu
+              _logout();
+            },
+            child: const Text('Keluar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
     if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(
+      Navigator.pushAndRemoveUntil(
         context,
-        '/login',
+        MaterialPageRoute(builder: (context) => const LoginPage()),
         (route) => false,
       );
     }
