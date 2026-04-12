@@ -1,7 +1,8 @@
-// add_product_page.dart
 import 'dart:developer' as dev;
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:shimmer/shimmer.dart';
 import 'barcode_scanner_page.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/category_model.dart';
@@ -27,10 +28,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final _barcodeController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
   final _sellPriceController = TextEditingController();
-  // final _priceNameController = TextEditingController();
   final _imageUrlController = TextEditingController();
 
-  // Key untuk paksa rebuild dropdown setelah data API masuk
   Key _categoryDropdownKey = UniqueKey();
   Key _unitDropdownKey = UniqueKey();
 
@@ -39,11 +38,15 @@ class _AddProductPageState extends State<AddProductPage> {
 
   int? _selectedCategoryId;
   int? _selectedUnitId;
-  String _selectedProductType = 'FINISHED'; // ← Simpan sebagai state
+  String _selectedProductType = 'FINISHED';
 
   bool _useStock = true;
   bool _showInTransaction = true;
   bool _isLoading = false;
+
+  // Warna tema — sesuai halaman lain
+  static const _primary = Color(0xFF00529C);
+  static const _accent = Colors.blueAccent;
 
   @override
   void initState() {
@@ -54,7 +57,6 @@ class _AddProductPageState extends State<AddProductPage> {
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     try {
-      // Fetch paralel agar lebih cepat
       final results = await Future.wait([
         _productService.fetchCategories(widget.storeId),
         _productService.fetchBaseUnits(),
@@ -66,18 +68,19 @@ class _AddProductPageState extends State<AddProductPage> {
       setState(() {
         _categories = categoryData;
         _units = unitData;
-
         if (_categories.isNotEmpty) _selectedCategoryId = _categories.first.id;
         if (_units.isNotEmpty) _selectedUnitId = _units.first.id;
-
-        // Paksa dropdown rebuild karena initialValue sudah berubah
         _categoryDropdownKey = UniqueKey();
         _unitDropdownKey = UniqueKey();
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal memuat data: $e")),
+          SnackBar(
+            content: Text("Gagal memuat data: $e",
+                style: TextStyle(fontSize: 13.sp)),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -85,18 +88,18 @@ class _AddProductPageState extends State<AddProductPage> {
     }
   }
 
-  // Dipanggil setelah kembali dari AddCategoryPage
   Future<void> _refreshCategories() async {
     try {
-      final categoryData = await _productService.fetchCategories(widget.storeId);
+      final categoryData =
+          await _productService.fetchCategories(widget.storeId);
       setState(() {
         _categories = categoryData;
-        // Pertahankan pilihan sebelumnya jika masih ada
-        final stillExists = _categories.any((c) => c.id == _selectedCategoryId);
+        final stillExists =
+            _categories.any((c) => c.id == _selectedCategoryId);
         if (!stillExists && _categories.isNotEmpty) {
           _selectedCategoryId = _categories.first.id;
         }
-        _categoryDropdownKey = UniqueKey(); // Rebuild dropdown
+        _categoryDropdownKey = UniqueKey();
       });
     } catch (e) {
       debugPrint("Gagal refresh kategori: $e");
@@ -110,33 +113,24 @@ class _AddProductPageState extends State<AddProductPage> {
     _barcodeController.dispose();
     _stockController.dispose();
     _sellPriceController.dispose();
-    // _priceNameController.dispose();
     _imageUrlController.dispose();
     super.dispose();
   }
 
   void _saveProduct() async {
     dev.log("--- Menjalankan Validasi Produk ---");
-    dev.log("Nama: ${_nameController.text}");
-    dev.log("SKU: ${_skuController.text}");
-    dev.log("BARCODE: ${_barcodeController.text}");
-    dev.log("Harga Jual (Raw): ${_sellPriceController.text}");
-    dev.log("Kategori ID: $_selectedCategoryId");
-    dev.log("Unit ID: $_selectedUnitId");
-
-    // Validasi form (nama, sku, harga, kategori, satuan)
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
-      // Bersihkan format Rupiah → angka murni
-      final rawPrice = _sellPriceController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      final rawPrice =
+          _sellPriceController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
       final newProduct = ProductModel(
         id: 0,
         name: _nameController.text.trim(),
-        sku: _skuController.text.trim(), // ← FIX: sku dikirim ke model
+        sku: _skuController.text.trim(),
+        barcode: _barcodeController.text.trim(),
         price: int.tryParse(rawPrice) ?? 0,
         stock: int.tryParse(_stockController.text) ?? 0,
         imageUrl: _imageUrlController.text.trim().isEmpty
@@ -144,22 +138,21 @@ class _AddProductPageState extends State<AddProductPage> {
             : _imageUrlController.text.trim(),
         categoryId: _selectedCategoryId,
         baseUnitId: _selectedUnitId,
-        productType: _selectedProductType, // ← FIX: kirim tipe yang dipilih
+        productType: _selectedProductType,
         trackStock: _useStock,
         isActive: _showInTransaction,
       );
 
       dev.log("Payload toJson: ${newProduct.toJson()}", name: "ADD_PRODUCT");
-
       final success = await _productService.addProduct(newProduct);
-
-      if (success && mounted) {
-        Navigator.pop(context, true);
-      }
+      if (success && mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: $e', style: TextStyle(fontSize: 13.sp)),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -170,67 +163,72 @@ class _AddProductPageState extends State<AddProductPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        backgroundColor: _accent,
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.green),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20.sp),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Tambah Barang',
           style: TextStyle(
-            color: Color(0xFF1B5E20),
+            color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: 18.sp,
           ),
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
       ),
+
+      // ← SHIMMER saat data pertama kali dimuat
       body: _isLoading && _categories.isEmpty
-          // Tampilkan loading penuh hanya saat data pertama kali dimuat
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildShimmerForm()
           : Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.w),
                 children: [
-                  // ── Preview Gambar ──────────────────────────────
+                  // ── Preview Gambar ────────────────────────────
                   _buildLabel("Preview Gambar"),
                   Container(
                     width: double.infinity,
-                    height: 180,
+                    height: 180.h,
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.blue.shade200),
                     ),
                     child: _imageUrlController.text.isEmpty
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.image_search,
-                                  size: 50, color: Colors.grey[400]),
-                              const Text(
+                                  size: 50.sp, color: Colors.blueAccent),
+                              Text(
                                 "Masukkan URL gambar di bawah",
-                                style:
-                                    TextStyle(color: Colors.grey, fontSize: 12),
+                                style: TextStyle(
+                                    color: Colors.blueAccent, fontSize: 12.sp),
                               ),
                             ],
                           )
                         : ClipRRect(
-                            borderRadius: BorderRadius.circular(11),
+                            borderRadius: BorderRadius.circular(11.r),
                             child: Image.network(
                               _imageUrlController.text,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => const Center(
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.broken_image,
-                                        color: Colors.red, size: 40),
+                                        color: Colors.red, size: 40.sp),
                                     Text("URL Gambar tidak valid",
                                         style: TextStyle(
-                                            color: Colors.red, fontSize: 12)),
+                                            color: Colors.red,
+                                            fontSize: 12.sp)),
                                   ],
                                 ),
                               ),
@@ -243,125 +241,145 @@ class _AddProductPageState extends State<AddProductPage> {
                           ),
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── URL Gambar ──────────────────────────────────
+                  // ── URL Gambar ────────────────────────────────
                   _buildLabel("URL Gambar"),
                   TextFormField(
                     controller: _imageUrlController,
+                    style: TextStyle(fontSize: 13.sp),
                     decoration:
                         _inputDecoration("https://example.com/image.jpg"),
                     onChanged: (_) => setState(() {}),
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── SKU ─────────────────────────────────────────
+                  // ── SKU ───────────────────────────────────────
                   _buildLabel("SKU (Kode Barang)*"),
                   TextFormField(
                     controller: _skuController,
+                    style: TextStyle(fontSize: 13.sp),
                     decoration: _inputDecoration("Contoh: BRG-001"),
-                    // FIX: trim() agar spasi tidak lolos validasi
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'SKU wajib diisi' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'SKU wajib diisi'
+                        : null,
                   ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // ── Barcode ──────────────────────────────────────
+
+                  SizedBox(height: 16.h),
+
+                  // ── Barcode ───────────────────────────────────
                   _buildLabel("BARCODE"),
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           controller: _barcodeController,
+                          style: TextStyle(fontSize: 13.sp),
                           decoration: _inputDecoration("|||"),
                           onChanged: (_) => setState(() {}),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8.w),
                       InkWell(
                         onTap: () async {
                           final result = await Navigator.push<String>(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const BarcodeScannerPage(),
-                            ),
+                                builder: (_) => const BarcodeScannerPage()),
                           );
                           if (result != null) {
                             _barcodeController.text = result;
                             setState(() {});
                           }
                         },
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8.r),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.all(12.w),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.blue.shade300),
+                            borderRadius: BorderRadius.circular(8.r),
+                            color: Colors.blue[50],
                           ),
-                          child: const Icon(
-                            Icons.qr_code_scanner,
-                            size: 28,
-                            color: Colors.indigo,
-                          ),
+                          child: Icon(Icons.qr_code_scanner,
+                              size: 28.sp, color: _accent),
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── Nama ─────────────────────────────────────────
+                  // ── Nama ──────────────────────────────────────
                   _buildLabel("Nama Barang*"),
                   TextFormField(
                     controller: _nameController,
-                    decoration: _inputDecoration("Contoh: Cuci Express"),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
+                    style: TextStyle(fontSize: 13.sp),
+                    decoration: _inputDecoration("Nama Product/Service"),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Nama wajib diisi'
+                        : null,
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── Tipe Barang ──────────────────────────────────
+                  // ── Tipe Barang ───────────────────────────────
                   _buildLabel("Tipe Barang"),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedProductType,
                     decoration: _inputDecoration(""),
+                    style: TextStyle(
+                        fontSize: 13.sp, color: Colors.black87),
                     items: const [
-                      DropdownMenuItem(value: 'FINISHED', child: Text('Default (Jadi)')),
-                      DropdownMenuItem(value: 'SERVICE', child: Text('Jasa')),
-                      DropdownMenuItem(value: 'RAW', child: Text('Bahan Baku')),
+                      DropdownMenuItem(
+                          value: 'FINISHED', child: Text('Default (Jadi)')),
+                      DropdownMenuItem(
+                          value: 'SERVICE', child: Text('Jasa')),
+                      DropdownMenuItem(
+                          value: 'RAW', child: Text('Bahan Baku')),
                     ],
                     onChanged: (v) {
                       if (v != null) setState(() => _selectedProductType = v);
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── Checkbox Stok & Tampilkan ────────────────────
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _useStock,
-                        onChanged: (v) => setState(() => _useStock = v!),
-                      ),
-                      const Text("Pakai stok"),
-                      const Spacer(),
-                      Checkbox(
-                        value: _showInTransaction,
-                        onChanged: (v) =>
-                            setState(() => _showInTransaction = v!),
-                      ),
-                      const Text("Tampilkan di Transaksi"),
-                    ],
+                  // ── Checkbox ──────────────────────────────────
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 12.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: Colors.blue.shade100),
+                    ),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _useStock,
+                          activeColor: _accent,
+                          onChanged: (v) =>
+                              setState(() => _useStock = v!),
+                        ),
+                        Text("Pakai stok",
+                            style: TextStyle(fontSize: 13.sp)),
+                        const Spacer(),
+                        Checkbox(
+                          value: _showInTransaction,
+                          activeColor: _accent,
+                          onChanged: (v) =>
+                              setState(() => _showInTransaction = v!),
+                        ),
+                        Text("Tampil di Transaksi",
+                            style: TextStyle(fontSize: 12.sp)),
+                      ],
+                    ),
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── Stok & Harga Jual ────────────────────────────
+                  // ── Stok & Harga ──────────────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -372,6 +390,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             TextFormField(
                               controller: _stockController,
                               keyboardType: TextInputType.number,
+                              style: TextStyle(fontSize: 13.sp),
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly
                               ],
@@ -380,7 +399,7 @@ class _AddProductPageState extends State<AddProductPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12.w),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,6 +408,7 @@ class _AddProductPageState extends State<AddProductPage> {
                             TextFormField(
                               controller: _sellPriceController,
                               keyboardType: TextInputType.number,
+                              style: TextStyle(fontSize: 13.sp),
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
                                 CurrencyInputFormatter(),
@@ -398,7 +418,8 @@ class _AddProductPageState extends State<AddProductPage> {
                                 if (v == null || v.trim().isEmpty) {
                                   return 'Harga wajib diisi';
                                 }
-                                final raw = v.replaceAll(RegExp(r'[^0-9]'), '');
+                                final raw =
+                                    v.replaceAll(RegExp(r'[^0-9]'), '');
                                 if (raw.isEmpty || int.parse(raw) <= 0) {
                                   return 'Harga harus lebih dari 0';
                                 }
@@ -411,9 +432,9 @@ class _AddProductPageState extends State<AddProductPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── Kategori ─────────────────────────────────────
+                  // ── Kategori ──────────────────────────────────
                   _buildLabel("Kategori*"),
                   Row(
                     children: [
@@ -422,6 +443,8 @@ class _AddProductPageState extends State<AddProductPage> {
                           key: _categoryDropdownKey,
                           initialValue: _selectedCategoryId,
                           isExpanded: true,
+                          style: TextStyle(
+                              fontSize: 13.sp, color: Colors.black87),
                           decoration: _inputDecoration("Pilih Kategori"),
                           items: _categories
                               .map((cat) => DropdownMenuItem<int>(
@@ -447,25 +470,28 @@ class _AddProductPageState extends State<AddProductPage> {
                             if (added == true) _refreshCategories();
                           });
                         },
-                        icon: const Icon(Icons.add_circle_outline,
-                            color: Colors.green),
+                        icon: Icon(Icons.add_circle_outline,
+                            color: _accent, size: 28.sp),
                         tooltip: 'Tambah Kategori',
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
-                  // ── Satuan ───────────────────────────────────────
+                  // ── Satuan ────────────────────────────────────
                   _buildLabel("Satuan (Base Unit)*"),
                   DropdownButtonFormField<int>(
                     key: _unitDropdownKey,
                     initialValue: _selectedUnitId,
+                    style:
+                        TextStyle(fontSize: 13.sp, color: Colors.black87),
                     decoration: _inputDecoration("Pilih Satuan"),
                     items: _units
                         .map((unit) => DropdownMenuItem<int>(
                               value: unit.id,
-                              child: Text("${unit.name} (${unit.symbol})"),
+                              child:
+                                  Text("${unit.name} (${unit.symbol})"),
                             ))
                         .toList(),
                     onChanged: (v) => setState(() => _selectedUnitId = v),
@@ -473,51 +499,111 @@ class _AddProductPageState extends State<AddProductPage> {
                         v == null ? 'Satuan wajib dipilih' : null,
                   ),
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: 50.h),
 
-                  // ── Tombol Simpan ─────────────────────────────────
+                  // ── Tombol Simpan ─────────────────────────────
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 50.h,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _saveProduct,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00796B),
+                        backgroundColor: _primary,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(12.r)),
                       ),
                       child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
+                          ? SizedBox(
+                              width: 24.w,
+                              height: 24.h,
+                              child: const CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 3),
+                            )
+                          : Text(
                               'SIMPAN',
                               style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16.sp),
                             ),
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24.h),
                 ],
               ),
             ),
     );
   }
 
+  // ← SHIMMER form skeleton
+  Widget _buildShimmerForm() {
+    return ListView(
+      padding: EdgeInsets.all(16.w),
+      children: List.generate(6, (index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Label skeleton
+              Container(
+                  width: 120.w,
+                  height: 12.h,
+                  color: Colors.white),
+              SizedBox(height: 6.h),
+              // Field skeleton
+              Container(
+                width: double.infinity,
+                height: index == 0 ? 180.h : 48.h,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              SizedBox(height: 20.h),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(text,
-          style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      padding: EdgeInsets.only(bottom: 4.h),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: _primary,
+          fontSize: 12.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(fontSize: 12.sp, color: Colors.grey),
       contentPadding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.r),
+        borderSide: BorderSide(color: Colors.blue.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.r),
+        borderSide: BorderSide(color: Colors.blue.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8.r),
+        borderSide: const BorderSide(color: _accent, width: 2),
+      ),
     );
   }
 }

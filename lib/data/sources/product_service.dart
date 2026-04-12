@@ -13,7 +13,7 @@ class FinishedProductModel {
   final String name;
   final String productType;
   final String sku;            
-  final String? kodeBarang;
+  final String? barcode;  // ← Ganti dari kodeBarang ke barcode
   final int? baseUnitId;
   final String? image;
   final String category;
@@ -27,7 +27,7 @@ class FinishedProductModel {
     required this.name,
     required this.productType,
     required this.sku,
-    this.kodeBarang,
+    this.barcode,  // ← Sesuaikan
     this.baseUnitId,
     this.image,
     required this.category,
@@ -38,19 +38,20 @@ class FinishedProductModel {
   });
 
   factory FinishedProductModel.fromJson(Map<String, dynamic> json) {
-  // Ambil price dari prices[0].price
-  final prices = json['prices'] as List?;
-  final price = prices != null && prices.isNotEmpty
-      ? prices[0]['price']?.toString() ?? '0'
-      : '0';
+    final prices = json['prices'] as List?;
+    final price = prices != null && prices.isNotEmpty
+        ? prices[0]['price']?.toString() ?? '0'
+        : '0';
+        
     return FinishedProductModel(
-      // Jika id datang sebagai String, kita parse ke int. Jika null, beri 0.
       id: json['id'] is String ? int.parse(json['id']) : (json['id'] ?? 0), 
       productType: json['product_type']?.toString() ?? 'FINISHED',
       name: json['name']?.toString() ?? '',
       sku: json['sku']?.toString() ?? '-',
-      kodeBarang: json['barcode']?.toString() ?? '-',
-      image: json['image']?.toString(), // Image boleh null
+      barcode: json['barcode'] != null && json['barcode'].toString().isNotEmpty 
+    ? json['barcode'].toString() 
+    : null,
+      image: json['image']?.toString(),
       category: json['category']?.toString() ?? '-',
       stock: double.tryParse(json['stock']?.toString() ?? '0') ?? 0.0,
       price: double.tryParse(price) ?? 0.0,
@@ -96,12 +97,15 @@ class ProductService {
 
   // 2. FUNGSI UNTUK PRODUK JADI (KASIR / FINISHED)
   // Fungsi ini yang akan dipanggil di CashierPage
-  Future<List<FinishedProductModel>> fetchFinishedProducts() async {
+  Future<List<FinishedProductModel>> fetchFinishedProducts(int storeId) async {
       try {
         log("Mengambil produk jadi (finished) untuk Kasir", name: "PRODUCT_SERVICE");
 
         // Mengarah ke endpoint /products/finished
-        final response = await _dio.get("/products/finished");
+          final response = await _dio.get(
+            "/products/finished",
+            queryParameters: {"store_id": storeId},
+          );
 
         log("Response Status Finished: ${response.statusCode}", name: "PRODUCT_SERVICE");
 
@@ -217,4 +221,3 @@ class ProductService {
 
 }
 
-// coba lenkapi disini dan ada pertanyaan disini saya tidak mendefinisikan sku tetapi bisa saya input ?

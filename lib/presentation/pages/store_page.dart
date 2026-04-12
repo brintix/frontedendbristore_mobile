@@ -1,9 +1,11 @@
-import 'package:dio/dio.dart'; 
+import 'package:dio/dio.dart';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:animations/animations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/sources/auth_service.dart';
-import 'home_page.dart'; 
+import 'home_page.dart';
 
 class StorePage extends StatefulWidget {
   final String userName;
@@ -12,7 +14,7 @@ class StorePage extends StatefulWidget {
   final List<Map<String, dynamic>> availableStores;
 
   const StorePage({
-    super.key, // 🔥 Super parameter
+    super.key,
     required this.userName,
     required this.userRole,
     required this.userRoleName,
@@ -36,26 +38,25 @@ class _StorePageState extends State<StorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.userName} - ${widget.userRoleName}'),
-        backgroundColor: const Color(0xFF00529C), // 🔥 BIRU BRI
+        title: Text(
+          '${widget.userName} - ${widget.userRoleName}',
+          style: TextStyle(fontSize: 16.sp),
+        ),
+        backgroundColor: const Color(0xFF00529C),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: Icon(Icons.logout, size: 22.sp),
             onPressed: () => _logout(),
           ),
         ],
       ),
       body: Container(
-        // 🔥 Background gradient BIRU seperti login
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade50,
-              Colors.white,
-            ],
+            colors: [Colors.blue.shade50, Colors.white],
           ),
         ),
         child: widget.availableStores.isEmpty
@@ -71,7 +72,7 @@ class _StorePageState extends State<StorePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
@@ -83,32 +84,34 @@ class _StorePageState extends State<StorePage> {
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.storefront_outlined,
-              size: 80,
-              color: Color(0xFF00529C),
+              size: 80.sp,
+              color: const Color(0xFF00529C),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24.h),
+          Text(
             'Tidak ada toko tersedia',
             style: TextStyle(
-              fontSize: 18,
-              color: Color(0xFF00529C),
+              fontSize: 18.sp,
+              color: const Color(0xFF00529C),
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
           SizedBox(
-            width: 200,
+            width: 200.w,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00529C),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
               ),
               onPressed: () => Navigator.pop(context),
-              child: const Text('Kembali'),
+              child: Text('Kembali', style: TextStyle(fontSize: 14.sp)),
             ),
           ),
         ],
@@ -118,75 +121,104 @@ class _StorePageState extends State<StorePage> {
 
   Widget _buildStoreList() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: widget.availableStores.length,
       itemBuilder: (context, index) {
         final store = widget.availableStores[index];
         return Card(
-          elevation: 8, // 🔥 Naikkan shadow
-          margin: const EdgeInsets.only(bottom: 16),
-          color: Colors.white, // 🔥 White card
+          elevation: 8,
+          margin: EdgeInsets.only(bottom: 16.h),
+          color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.blue.shade100), // 🔥 Blue border
+            borderRadius: BorderRadius.circular(16.r),
+            side: BorderSide(color: Colors.blue.shade100),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             onTap: () => _selectStore(store),
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20.w),
               child: Row(
                 children: [
-                  // Avatar BIRU
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: const Color(0xFF00529C), // 🔥 BIRU BRI
-                    child: Text(
-                      '${store['id'] ?? index + 1}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                  // ← GANTI CircleAvatar ID dengan icon toko
+                  Container(
+                    width: 60.w,
+                    height: 60.w,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00529C).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF00529C).withValues(alpha: 0.3),
+                        width: 1.5,
                       ),
                     ),
+                    child: Icon(
+                      Icons.storefront_rounded,       // ← icon toko
+                      size: 30.sp,
+                      color: const Color(0xFF00529C),
+                    ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           store['name'] ?? 'Toko Tanpa Nama',
-                          style: const TextStyle(
-                            fontSize: 20,
+                          style: TextStyle(
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF00529C), // 🔥 BIRU teks
+                            color: const Color(0xFF00529C),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          store['address'] ?? '',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            height: 1.4,
+                        if ((store['address'] ?? '').toString().isNotEmpty) ...[
+                          SizedBox(height: 4.h),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined,
+                                  size: 13.sp, color: Colors.grey),
+                              SizedBox(width: 4.w),
+                              Expanded(
+                                child: Text(
+                                  store['address'],
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: Colors.grey[600],
+                                    height: 1.4,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '📞 ${store['phone'] ?? 'Tidak ada'}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.blueGrey,
-                            fontWeight: FontWeight.w500,
+                        ],
+                        if ((store['phone'] ?? '').toString().isNotEmpty) ...[
+                          SizedBox(height: 4.h),
+                          Row(
+                            children: [
+                              Icon(Icons.phone_outlined,
+                                  size: 13.sp, color: Colors.blueGrey),
+                              SizedBox(width: 4.w),
+                              Text(
+                                store['phone'],
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.blueGrey,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios, color: Color(0xFF00529C)), // 🔥 BIRU arrow
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: const Color(0xFF00529C),
+                    size: 16.sp,
+                  ),
                 ],
               ),
             ),
@@ -199,40 +231,35 @@ class _StorePageState extends State<StorePage> {
   Future<void> _selectStore(Map<String, dynamic> store) async {
     if (!mounted) return;
 
-    // 🔥 1. Show dialog SEBELUM async
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
-    ).then((_) {}); // Ignore result
+    ).then((_) {});
 
     Response? response;
     try {
-      // 🔥 2. API call
       response = await _authService.selectStore(store['id']);
     } catch (e) {
-      // 🔥 3. Tutup dialog di catch (SEBELUM mounted check)
       if (mounted) Navigator.of(context).pop();
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: $e', style: TextStyle(fontSize: 13.sp)),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       return;
     }
 
-    // 🔥 4. Tutup dialog SETELAH await selesai
     if (mounted) Navigator.of(context).pop();
-
-    // 🔥 5. Check mounted SETELAH semua async selesai
     if (!mounted || response.statusCode != 200) return;
 
     final data = response.data['data'];
     final newUserData = data['user'];
     final newToken = data['token'];
 
-    // 🔥 6. Simpan data (async kedua)
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', newToken);
     await prefs.setInt('store_id', newUserData['store_id']);
@@ -240,27 +267,34 @@ class _StorePageState extends State<StorePage> {
 
     log("✅ Store ID: ${newUserData['store_id']} - Token UPDATED", name: "STORE_PAGE");
 
-    // 🔥 7. FINAL mounted check SEBELUM navigate
     if (!mounted) return;
 
+    // ← ANIMASI: FadeThroughTransition ke HomePage
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => HomePage(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (context, animation, secondaryAnimation) => HomePage(
           storeId: newUserData['store_id'],
           userRole: newUserData['role_id'].toString(),
           userRoleName: widget.userRoleName,
           userName: newUserData['name'],
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          );
+        },
       ),
     );
   }
 
-
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    
+
     if (mounted) {
       Navigator.pushNamedAndRemoveUntil(
         context,

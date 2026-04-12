@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:animations/animations.dart';
 import 'package:frontendbristore/presentation/pages/add_product_page.dart';
 import '../../data/models/product_model.dart';
 import '../../data/sources/product_service.dart';
-// Pastikan path import ini sesuai dengan project Anda
-import 'barcode_scanner_page.dart'; 
+import 'barcode_scanner_page.dart';
 
 class ProductPage extends StatefulWidget {
   final int storeId;
@@ -19,8 +21,6 @@ class ProductPage extends StatefulWidget {
 
 class _ProductPageState extends State<ProductPage> {
   final ProductService _productService = ProductService();
-  
-  // Variable untuk filter & search
   final TextEditingController _searchController = TextEditingController();
   List<ProductModel> _allProducts = [];
   List<ProductModel> _filteredProducts = [];
@@ -33,13 +33,12 @@ class _ProductPageState extends State<ProductPage> {
     _fetchInitialData();
   }
 
-  // Logika pengambilan data tetap sama, namun disimpan ke list lokal
   Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final products = await _productService.fetchProducts(widget.storeId);
       setState(() {
@@ -55,77 +54,70 @@ class _ProductPageState extends State<ProductPage> {
     }
   }
 
-  // Fungsi Filter sesuai permintaan (Name, SKU, Kode Barang)
-void _runFilter(String query) {
-  List<ProductModel> results = [];
-  if (query.isEmpty) {
-    results = _allProducts;
-  } else {
-    results = _allProducts.where((product) {
-      // Tambahkan ?? '' untuk menangani nilai null
-      final name = product.name.toLowerCase();
-      final sku = (product.sku ?? '').toLowerCase();
-      final barcode = (product.barcode ?? '').toLowerCase();
-      final input = query.toLowerCase();
-
-      return name.contains(input) || 
-             sku.contains(input) || 
-             barcode.contains(input);
-    }).toList();
+  void _runFilter(String query) {
+    List<ProductModel> results = [];
+    if (query.isEmpty) {
+      results = _allProducts;
+    } else {
+      results = _allProducts.where((product) {
+        final name = product.name.toLowerCase();
+        final sku = (product.sku ?? '').toLowerCase();
+        final barcode = (product.barcode ?? '').toLowerCase();
+        final input = query.toLowerCase();
+        return name.contains(input) ||
+            sku.contains(input) ||
+            barcode.contains(input);
+      }).toList();
+    }
+    setState(() {
+      _filteredProducts = results;
+    });
   }
 
-  setState(() {
-    _filteredProducts = results;
-  });
-}
-
-  // Fungsi Scan Barcode
-Future<void> _scanBarcode() async {
-  debugPrint("Memulai Scan Barcode...");
-  
-  // Contoh jika Anda menggunakan package barcode scanner:
-  final String? result = await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => const BarcodeScannerPage()),
-  );
-
-  if (result != null) {
-    _searchController.text = result; // Masukkan hasil scan ke kolom pencarian
-    _runFilter(result);              // Jalankan filter secara otomatis
+  Future<void> _scanBarcode() async {
+    final String? result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannerPage()),
+    );
+    if (result != null) {
+      _searchController.text = result;
+      _runFilter(result);
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Daftar Produk',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontSize: 18.sp),
         ),
         backgroundColor: Colors.blueAccent,
         iconTheme: const IconThemeData(color: Colors.white),
-        // Menambahkan Search Bar di bawah Title AppBar
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(70),
+          preferredSize: Size.fromHeight(70.h),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
             child: TextField(
               controller: _searchController,
               onChanged: (value) => _runFilter(value),
               decoration: InputDecoration(
                 hintText: "Cari Nama, SKU, atau Barcode...",
-                prefixIcon: const Icon(Icons.search, color: Colors.blueAccent),
+                hintStyle: TextStyle(fontSize: 13.sp),
+                prefixIcon:
+                    const Icon(Icons.search, color: Colors.blueAccent),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.qr_code_scanner, color: Colors.blueAccent),
+                  icon: const Icon(Icons.qr_code_scanner,
+                      color: Colors.blueAccent),
                   onPressed: _scanBarcode,
                 ),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12.r),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -138,11 +130,21 @@ Future<void> _scanBarcode() async {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => AddProductPage(storeId: widget.storeId),
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 400),
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  AddProductPage(storeId: widget.storeId),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                // ← FadeThroughTransition ke AddProductPage
+                return FadeThroughTransition(
+                  animation: animation,
+                  secondaryAnimation: secondaryAnimation,
+                  child: child,
+                );
+              },
             ),
-          ).then((_) => _fetchInitialData()); // Refresh data setelah tambah produk
-          debugPrint("Navigasi ke Tambah Produk");
+          ).then((_) => _fetchInitialData());
         },
         backgroundColor: Colors.blueAccent,
         child: const Icon(Icons.add, color: Colors.white),
@@ -151,29 +153,28 @@ Future<void> _scanBarcode() async {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    // ← SHIMMER saat loading
+    if (_isLoading) return _buildShimmerList();
 
     if (_errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: Colors.red),
-              const SizedBox(height: 12),
+              Icon(Icons.error_outline, size: 60.sp, color: Colors.red),
+              SizedBox(height: 12.h),
               Text(
                 'Terjadi kesalahan:\n$_errorMessage',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: Colors.red, fontSize: 13.sp),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
               ElevatedButton(
                 onPressed: _fetchInitialData,
-                child: const Text("Coba Lagi"),
-              )
+                child: Text('Coba Lagi', style: TextStyle(fontSize: 13.sp)),
+              ),
             ],
           ),
         ),
@@ -185,13 +186,14 @@ Future<void> _scanBarcode() async {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[400]!),
-            const SizedBox(height: 16),
+            Icon(Icons.inventory_2_outlined,
+                size: 80.sp, color: Colors.grey[400]),
+            SizedBox(height: 16.h),
             Text(
-              _searchController.text.isEmpty 
-                ? 'Belum ada produk di toko ini.' 
-                : 'Produk tidak ditemukan.',
-              style: const TextStyle(fontSize: 16),
+              _searchController.text.isEmpty
+                  ? 'Belum ada produk di toko ini.'
+                  : 'Produk tidak ditemukan.',
+              style: TextStyle(fontSize: 16.sp),
             ),
           ],
         ),
@@ -199,11 +201,77 @@ Future<void> _scanBarcode() async {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       itemCount: _filteredProducts.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => SizedBox(height: 12.h),
       itemBuilder: (context, index) {
         return _buildProductCard(_filteredProducts[index]);
+      },
+    );
+  }
+
+  // ← SHIMMER loading skeleton
+  Widget _buildShimmerList() {
+    return ListView.separated(
+      padding: EdgeInsets.all(16.w),
+      itemCount: 6, // jumlah skeleton card
+      separatorBuilder: (context, index) => SizedBox(height: 12.h),
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            height: 110.h,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Row(
+              children: [
+                // Skeleton gambar
+                Container(
+                  width: 110.w,
+                  height: 110.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(16.r),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 14.w),
+                // Skeleton teks
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                          width: 60.w, height: 12.h, color: Colors.white),
+                      SizedBox(height: 8.h),
+                      Container(
+                          width: 140.w, height: 14.h, color: Colors.white),
+                      SizedBox(height: 6.h),
+                      Container(
+                          width: 80.w, height: 10.h, color: Colors.white),
+                      SizedBox(height: 10.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                              width: 70.w, height: 14.h, color: Colors.white),
+                          Container(
+                              width: 50.w, height: 24.h, color: Colors.white),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 14.w),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
@@ -212,7 +280,7 @@ Future<void> _scanBarcode() async {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -223,14 +291,12 @@ Future<void> _scanBarcode() async {
       ),
       child: Row(
         children: [
-          // Gambar (Logika tetap sama)
+          // Gambar
           ClipRRect(
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(16),
-            ),
+            borderRadius: BorderRadius.horizontal(left: Radius.circular(16.r)),
             child: SizedBox(
-              width: 110,
-              height: 110,
+              width: 110.w,
+              height: 110.h,
               child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                   ? Image.network(
                       product.imageUrl!,
@@ -247,24 +313,18 @@ Future<void> _scanBarcode() async {
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
                           color: Colors.blue[50],
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: Colors.blueAccent,
-                              size: 32,
-                            ),
+                          child: Center(
+                            child: Icon(Icons.broken_image_outlined,
+                                color: Colors.blueAccent, size: 32.sp),
                           ),
                         );
                       },
                     )
                   : Container(
                       color: Colors.blue[50],
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: Colors.blueAccent,
-                          size: 32,
-                        ),
+                      child: Center(
+                        child: Icon(Icons.image_outlined,
+                            color: Colors.blueAccent, size: 32.sp),
                       ),
                     ),
             ),
@@ -273,89 +333,85 @@ Future<void> _scanBarcode() async {
           // Info Produk
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding:
+                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                     decoration: BoxDecoration(
                       color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(6.r),
                     ),
                     child: Text(
                       product.categoryName ?? '-',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.blueAccent,
-                        fontSize: 10,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-
+                  SizedBox(height: 6.h),
                   Text(
                     product.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: Colors.black87,
                     ),
                   ),
-                  
-                  // Menampilkan SKU atau Kode Barang sebagai info tambahan jika perlu
                   if (product.sku != null && product.sku!.isNotEmpty)
                     Text(
                       'SKU: ${product.sku}',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      style:
+                          TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
                     ),
-
-                  const SizedBox(height: 8),
-
+                  SizedBox(height: 8.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Rp ${product.price}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.orange,
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 15.sp,
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 4.h),
                         decoration: BoxDecoration(
                           color: product.stock > 0
                               ? Colors.green[50]
                               : Colors.red[50],
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.inventory_2,
-                              size: 12,
+                              size: 12.sp,
                               color: product.stock > 0
                                   ? Colors.green
                                   : Colors.red,
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 4.w),
                             Text(
                               '${product.stock}',
                               style: TextStyle(
                                 color: product.stock > 0
                                     ? Colors.green
                                     : Colors.red,
-                                fontSize: 12,
+                                fontSize: 12.sp,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -373,15 +429,3 @@ Future<void> _scanBarcode() async {
     );
   }
 }
-
-/*
-
-The method 'toLowerCase' can't be unconditionally invoked because the receiver can be 'null'.
-Try making the call conditional (using '?.') or adding a null check to the target ('!').
-The property 'isNotEmpty' can't be unconditionally accessed because the receiver can be 'null'.
-Try making the access conditional (using '?.') or adding a null check to the target ('!').
-
-ada error seperti diatas 
-maaf saya sala yang benar barcode bukan kodeBarang
-
-*/ 

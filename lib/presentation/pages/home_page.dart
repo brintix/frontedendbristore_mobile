@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:animations/animations.dart';
 import '../../data/sources/auth_service.dart';
 import 'login_page.dart';
 import 'product_page.dart';
@@ -23,7 +25,18 @@ class HomePage extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const LoginPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeThroughTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            child: child,
+          );
+        },
+      ),
     );
   }
 
@@ -37,60 +50,56 @@ class HomePage extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            const Text(
+            Text(
               "BRI POST",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const Spacer(),
             Text(
               userName,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: Colors.white, fontSize: 14.sp),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: Icon(Icons.logout, color: Colors.white, size: 22.sp),
             onPressed: () => _logout(context),
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            SizedBox(height: 20.h),
             GridView.count(
               shrinkWrap: true,
               crossAxisCount: 2,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
+              crossAxisSpacing: 20.w,
+              mainAxisSpacing: 20.h,
               children: [
-                // Menu Produk
-                _buildSimpleMenu(
+                // ← OpenContainer: animasi expand saat buka ProductPage
+                _buildAnimatedMenu(
                   context,
-                  icon: Icons.inventory_2, // Ikon Produk (Box/Stok)
+                  icon: Icons.inventory_2,
                   label: "Produk",
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProductPage(storeId: storeId)),
-                  ),
+                  page: ProductPage(storeId: storeId),
                 ),
-                // Menu Kasir
-                _buildSimpleMenu(
+                // ← OpenContainer: animasi expand saat buka CashierPage
+                _buildAnimatedMenu(
                   context,
-                  icon: Icons.point_of_sale, // Ikon Kasir (Mesin Kasir)
+                  icon: Icons.point_of_sale,
                   label: "Kasir",
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CashierPage(
-                        userName: userName,
-                        userRole: userRole,
-                        userRoleName: userRoleName,
-                        storeId: storeId,
-                      ),
-                    ),
+                  page: CashierPage(
+                    userName: userName,
+                    userRole: userRole,
+                    userRoleName: userRoleName,
+                    storeId: storeId,
                   ),
                 ),
               ],
@@ -101,24 +110,38 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSimpleMenu(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-        ),
+  // ← Ganti _buildSimpleMenu dengan OpenContainer dari package animations
+  Widget _buildAnimatedMenu(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Widget page,
+  }) {
+    return OpenContainer(
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionType: ContainerTransitionType.fadeThrough,
+      openColor: const Color(0xFFF8FAFC),
+      closedColor: Colors.white,
+      closedElevation: 0,
+      closedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15.r),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      openBuilder: (context, _) => page,
+      closedBuilder: (context, openContainer) => InkWell(
+        onTap: openContainer,
+        borderRadius: BorderRadius.circular(15.r),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: const Color(0xFF00529C)),
-            const SizedBox(height: 10),
+            Icon(icon, size: 40.sp, color: const Color(0xFF00529C)),
+            SizedBox(height: 10.h),
             Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16.sp,
+              ),
             ),
           ],
         ),

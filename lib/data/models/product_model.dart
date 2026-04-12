@@ -1,3 +1,4 @@
+// product_model.dart
 import 'base_unit_model.dart';
 // product_model.dart
 class ProductModel {
@@ -100,5 +101,3 @@ factory ProductModel.fromJson(Map<String, dynamic> json) {
     };
   }
 }
-
-// product_model.dart 

@@ -23,6 +23,9 @@ dependencies:
   google_fonts: ^8.0.2
   esc_pos_utils_plus: ^2.0.4
   print_bluetooth_thermal: ^1.1.6
+  shimmer: ^3.0.0          # loading skeleton produk
+  animations: ^2.0.0       # transisi PaymentSheet
+  flutter_screenutil: ^5.9.0  # sudah kamu rencanakan
 
 dev_dependencies:
   flutter_test:

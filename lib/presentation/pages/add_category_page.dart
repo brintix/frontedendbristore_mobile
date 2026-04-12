@@ -63,7 +63,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
-                hintText: "Contoh: Makanan, Jasa Cuci, dll",
+                hintText: "Contoh: Makanan, Jasa/service, dll",
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -72,13 +72,15 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
               ),
             ),
             const Spacer(),
+            SizedBox(height: 50), 
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveCategory,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: const Color(0xFF00529C),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isLoading
