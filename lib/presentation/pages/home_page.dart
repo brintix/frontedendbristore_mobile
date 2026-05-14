@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:animations/animations.dart';
+// import 'dart:developer'; // Untuk log jika diperlukan
 import '../../data/sources/auth_service.dart';
 import 'login_page.dart';
 import 'product_page.dart';
@@ -24,20 +25,11 @@ class HomePage extends StatelessWidget {
   void _logout(BuildContext context) async {
     await AuthService().logout();
     if (!context.mounted) return;
+    
+    // Menggunakan MaterialPageRoute standar untuk logout agar lebih ringan
     Navigator.pushReplacement(
       context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginPage(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeThroughTransition(
-            animation: animation,
-            secondaryAnimation: secondaryAnimation,
-            child: child,
-          );
-        },
-      ),
+      MaterialPageRoute(builder: (context) => const LoginPage()),
     );
   }
 
@@ -52,7 +44,7 @@ class HomePage extends StatelessWidget {
         title: Row(
           children: [
             Text(
-              "BRI POST",
+              "BRI POS",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18.sp,
@@ -84,32 +76,30 @@ class HomePage extends StatelessWidget {
               crossAxisSpacing: 20.w,
               mainAxisSpacing: 20.h,
               children: [
-                // ← OpenContainer: animasi expand saat buka ProductPage
+                // Menggunakan builder function agar halaman tidak di-load di awal
                 _buildAnimatedMenu(
                   context,
                   icon: Icons.inventory_2,
                   label: "Produk",
-                  page: ProductPage(storeId: storeId),
+                  pageBuilder: () => ProductPage(storeId: storeId),
                 ),
-                // ← OpenContainer: animasi expand saat buka CashierPage
                 _buildAnimatedMenu(
                   context,
                   icon: Icons.point_of_sale,
                   label: "Kasir",
-                  page: CashierPage(
+                  pageBuilder: () => CashierPage(
                     userName: userName,
                     userRole: userRole,
                     userRoleName: userRoleName,
                     storeId: storeId,
                   ),
                 ),
-                // ← OpenContainer: animasi expand saat buka CashierPage
                 _buildAnimatedMenu(
                   context, 
                   icon: Icons.receipt_long, 
                   label: "Transaksi Toko", 
-                  page: TransactionStorePage(),
-                  ),
+                  pageBuilder: () => const TransactionStorePage(),
+                ),
               ],
             ),
           ],
@@ -118,15 +108,14 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ← Ganti _buildSimpleMenu dengan OpenContainer dari package animations
   Widget _buildAnimatedMenu(
     BuildContext context, {
     required IconData icon,
     required String label,
-    required Widget page,
+    required Widget Function() pageBuilder, // Perubahan ke builder function
   }) {
     return OpenContainer(
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: const Duration(milliseconds: 450), // Sedikit diperhalus
       transitionType: ContainerTransitionType.fadeThrough,
       openColor: const Color(0xFFF8FAFC),
       closedColor: Colors.white,
@@ -135,7 +124,8 @@ class HomePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(15.r),
         side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
-      openBuilder: (context, _) => page,
+      // Halaman baru benar-benar dibuat saat fungsi ini dipanggil (saat klik)
+      openBuilder: (context, _) => pageBuilder(),
       closedBuilder: (context, openContainer) => InkWell(
         onTap: openContainer,
         borderRadius: BorderRadius.circular(15.r),
@@ -149,6 +139,7 @@ class HomePage extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16.sp,
+                color: const Color(0xFF1E293B),
               ),
             ),
           ],

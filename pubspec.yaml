@@ -8,6 +8,7 @@ environment:
   sdk: ^3.11.4
 
 dependencies:
+  sentry_flutter: ^9.16.1
   flutter:
     sdk: flutter
   permission_handler: ^11.3.1
@@ -26,8 +27,12 @@ dependencies:
   shimmer: ^3.0.0          # loading skeleton produk
   animations: ^2.0.0       # transisi PaymentSheet
   flutter_screenutil: ^5.9.0  # sudah kamu rencanakan
+  cached_network_image: ^3.4.1
+  geolocator: ^11.0.0
+  geocoding: ^3.0.0
 
 dev_dependencies:
+  sentry_dart_plugin: ^3.2.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -37,3 +42,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+sentry:
+  upload_debug_symbols: true
+  upload_source_maps: true
+  project: flutter
+  org: ora-tau

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:animations/animations.dart';
+// import 'package:animations/animations.dart';
 import 'package:frontendbristore/presentation/pages/add_product_page.dart';
 import '../../data/models/product_model.dart';
 import '../../data/sources/product_service.dart';
@@ -30,7 +31,12 @@ class _ProductPageState extends State<ProductPage> {
   @override
   void initState() {
     super.initState();
-    _fetchInitialData();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _fetchInitialData();
+      }
+    });
   }
 
   Future<void> _fetchInitialData() async {
@@ -128,23 +134,16 @@ class _ProductPageState extends State<ProductPage> {
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // Mengganti PageRouteBuilder yang berat dengan MaterialPageRoute yang lebih ringan
           Navigator.push(
             context,
-            PageRouteBuilder(
-              transitionDuration: const Duration(milliseconds: 400),
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  AddProductPage(storeId: widget.storeId),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                // ← FadeThroughTransition ke AddProductPage
-                return FadeThroughTransition(
-                  animation: animation,
-                  secondaryAnimation: secondaryAnimation,
-                  child: child,
-                );
-              },
+            MaterialPageRoute(
+              builder: (context) => AddProductPage(storeId: widget.storeId),
             ),
-          ).then((_) => _fetchInitialData());
+          ).then((_) {
+            // Refresh data setelah kembali dari halaman tambah produk
+            _fetchInitialData();
+          });
         },
         backgroundColor: Colors.blueAccent,
         child: const Icon(Icons.add, color: Colors.white),
@@ -277,155 +276,164 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Widget _buildProductCard(ProductModel product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Gambar
-          ClipRRect(
-            borderRadius: BorderRadius.horizontal(left: Radius.circular(16.r)),
-            child: SizedBox(
-              width: 110.w,
-              height: 110.h,
-              child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      product.imageUrl!,
+  return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Gambar
+            ClipRRect(
+              borderRadius: BorderRadius.horizontal(left: Radius.circular(16.r)),
+              child: SizedBox(
+                width: 110.w,
+                height: 110.h,
+                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+              ? CachedNetworkImage(
+                      imageUrl: product.imageUrl!,
                       fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.blue[50],
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                      // Membatasi cache di memori agar HP tidak terbebani (Opsional tapi Pro)
+                      memCacheWidth: 250, 
+                      memCacheHeight: 250,
+                      // Tampilan saat proses download
+                      placeholder: (context, url) => Container(
+                        color: Colors.blue[50],
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.blueAccent,
                           ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.blue[50],
-                          child: Center(
-                            child: Icon(Icons.broken_image_outlined,
-                                color: Colors.blueAccent, size: 32.sp),
+                        ),
+                      ),
+                      // Tampilan jika link error atau gambar gagal dimuat
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.blue[50],
+                        child: Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: Colors.blueAccent,
+                            size: 32.sp,
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     )
-                  : Container(
-                      color: Colors.blue[50],
-                      child: Center(
-                        child: Icon(Icons.image_outlined,
-                            color: Colors.blueAccent, size: 32.sp),
+                    : Container(
+                        color: Colors.blue[50],
+                        child: Center(
+                          child: Icon(Icons.image_outlined,
+                              color: Colors.blueAccent, size: 32.sp),
+                        ),
+                      ),
+              ),
+            ),
+
+            // Info Produk
+            Expanded(
+              child: Padding(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        product.categoryName ?? '-',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-            ),
-          ),
-
-          // Info Produk
-          Expanded(
-            child: Padding(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(6.r),
-                    ),
-                    child: Text(
-                      product.categoryName ?? '-',
-                      maxLines: 1,
+                    SizedBox(height: 6.h),
+                    Text(
+                      product.name,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.blueAccent,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14.sp,
+                        color: Colors.black87,
                       ),
                     ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14.sp,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  if (product.sku != null && product.sku!.isNotEmpty)
-                    Text(
-                      'SKU: ${product.sku}',
-                      style:
-                          TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
-                    ),
-                  SizedBox(height: 8.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                    if (product.sku != null && product.sku!.isNotEmpty)
                       Text(
-                        'Rp ${product.price}',
-                        style: TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15.sp,
-                        ),
+                        'SKU: ${product.sku}',
+                        style:
+                            TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 8.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: product.stock > 0
-                              ? Colors.green[50]
-                              : Colors.red[50],
-                          borderRadius: BorderRadius.circular(8.r),
+                    SizedBox(height: 8.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Rp ${product.price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                          style: TextStyle(
+                            color: Colors.orange[800],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15.sp,
+                          ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.inventory_2,
-                              size: 12.sp,
-                              color: product.stock > 0
-                                  ? Colors.green
-                                  : Colors.red,
-                            ),
-                            SizedBox(width: 4.w),
-                            Text(
-                              '${product.stock}',
-                              style: TextStyle(
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: product.stock > 0
+                                ? Colors.green[50]
+                                : Colors.red[50],
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.inventory_2,
+                                size: 12.sp,
                                 color: product.stock > 0
                                     ? Colors.green
                                     : Colors.red,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 4.w),
+                              Text(
+                                product.stock > 0 ? '${product.stock}' : '-',
+                                style: TextStyle(
+                                  color: product.stock > 0
+                                      ? Colors.green
+                                      : Colors.red,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+// kita sesuaikan disini dulu 

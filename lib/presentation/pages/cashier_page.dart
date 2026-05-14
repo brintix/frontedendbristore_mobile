@@ -1,3 +1,4 @@
+// cashier_page.dart
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -284,7 +285,7 @@ class _CashierPageState extends State<CashierPage> {
     FinishedProductModel? product;
     try {
       product = products.firstWhere((p) {
-        final productBarcode = p.barcode?.trim() ?? '';
+        final productBarcode = p.barcode?.toString().trim() ?? '';
         final productSku = p.sku.trim();
         return productBarcode == cleanBarcode || productSku == cleanBarcode;
       });
@@ -400,7 +401,7 @@ class _CashierPageState extends State<CashierPage> {
       );
       if (unit.name.isNotEmpty) return unit.name;
     }
-    String fallback = product.baseUnit;
+    String fallback = product.baseUnit.isEmpty ? 'Pcs' : product.baseUnit;
     if (fallback.isEmpty) return 'Pcs';
     return fallback[0].toUpperCase() + fallback.substring(1).toLowerCase();
   }
@@ -571,7 +572,7 @@ class _CashierPageState extends State<CashierPage> {
                         ),
                         Flexible(
                           child: Text(
-                            "Rp ${_calculateTotal().toStringAsFixed(0)}",
+                            "Rp ${_calculateTotal().toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16.sp,
@@ -718,9 +719,9 @@ class _CashierPageState extends State<CashierPage> {
                       ),
                     SizedBox(height: 4.h),
                     Text(
-                      'Rp ${product.price}',
+                      'Rp ${product.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                       style: TextStyle(
-                        color: Colors.orange,
+                        color: Colors.orange[800],
                         fontWeight: FontWeight.bold,
                         fontSize: 13.sp,
                       ),
@@ -834,3 +835,5 @@ class _CashierPageState extends State<CashierPage> {
     );
   }
 }
+
+// sekarang di bagian cashier_page.dart apa yang perlu di sesuaikan tunjukan di blok kode mana di ganti apa ?
